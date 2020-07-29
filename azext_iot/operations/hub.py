@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
+import pdb
 from os.path import exists, basename
 from time import time, sleep
 import six
@@ -2095,6 +2096,10 @@ def iot_device_export(
 
     client = iot_hub_service_factory(cmd.cli_ctx)
     discovery = IotHubDiscovery(cmd)
+
+    if exists(blob_container_uri):        
+        blob_container_uri = read_file_content(blob_container_uri)
+    
     target = discovery.get_target(
         hub_name=hub_name, resource_group_name=resource_group_name
     )
@@ -2141,6 +2146,13 @@ def iot_device_import(
 
     client = iot_hub_service_factory(cmd.cli_ctx)
     discovery = IotHubDiscovery(cmd)
+
+    if exists(input_blob_container_uri):        
+        input_blob_container_uri = read_file_content(input_blob_container_uri)
+    
+    if exists(output_blob_container_uri):        
+        output_blob_container_uri = read_file_content(output_blob_container_uri)
+    
     target = discovery.get_target(
         hub_name=hub_name, resource_group_name=resource_group_name
     )
