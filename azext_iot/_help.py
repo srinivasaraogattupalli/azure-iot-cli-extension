@@ -214,10 +214,10 @@ helps[
     long-summary: For more information, see
                   https://docs.microsoft.com/azure/iot-hub/iot-hub-devguide-identity-registry#import-and-export-device-identities
     examples:
-    - name: Import device-identity configurations from blob using SAS uri
+    - name: Import device-identity configurations from container using SAS uri
       text: >
         az iot hub device-identity import -n {iothub_name} --ibcu {input_sas_uri} --obcu {output_sas_uri}
-    - name: Import device-identity configurations from blob and blob URI will be in text file
+    - name: Import device-identity configurations from container using SAS uri file
       text: >
         az iot hub device-identity import -n {iothub_name} --ibcu {input_sas_uri_filepath} --obcu {output_sas_uri_filepath}
 """

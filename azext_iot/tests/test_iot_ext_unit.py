@@ -18,6 +18,7 @@ import responses
 import re
 from uuid import uuid4
 from azext_iot.operations import hub as subject
+from azure.cli.core.mock import DummyCli
 from azext_iot.common.utility import (
     validate_min_python_version,
     url_encode_dict,
@@ -52,6 +53,102 @@ mock_target["cs"] = generate_cs()
 path_iot_hub_service_factory = "azext_iot.common._azure.iot_hub_service_factory"
 
 # TODO generalize all fixtures across DPS/Hub unit tests
+
+
+def generate_device_identity_export_req(
+    hub_name,
+    blob_container_uri,
+    include_keys=False,
+    storage_authentication_type=None,
+    resource_group_name=None,
+):
+    return {
+        "hub_name": hub_name,
+        "blob_container_uri": blob_container_uri,
+        "include_keys": include_keys,
+        "storage_authentication_type": storage_authentication_type,
+        "resource_group_name": resource_group_name,
+    }
+
+
+class TestDeviceIdentityExport:
+    @pytest.fixture(params=[200])
+    def serviceclient(self, mocker, fixture_ghcs, fixture_sas, request):
+        service_client = mocker.patch(path_service_client)
+        service_client.return_value = build_mock_response(mocker, request.param, {})
+        return service_client
+
+    @pytest.mark.parametrize(
+        "req",
+        [
+            (generate_device_identity_export_req(hub_name="hubname", blob_container_uri="exporturi")),
+            (generate_device_identity_export_req(hub_name="hubname1", blob_container_uri="exporturi2", include_keys=True)),
+            (generate_device_identity_export_req(hub_name="hubname1", blob_container_uri="exporturi2", include_keys=False, resource_group_name="rgName")),
+            (generate_device_identity_export_req(hub_name="hubname1", blob_container_uri="exporturi2", include_keys=True, resource_group_name="rgName")),
+        ],
+    )
+    def test_device_identity_export(self, serviceclient, req):
+        fixture_cmd.cli_ctx = DummyCli()
+        subject.iot_device_export(
+            fixture_cmd,
+            req["hub_name"],
+            req["blob_container_uri"],
+            req["include_keys"],
+            req["storage_authentication_type"],
+            req["resource_group_name"]
+        )
+        args = serviceclient.call_args
+        body = json.loads(args[0][0].body)
+        assert body["exportBlobContainerUri"] == req["blob_container_uri"]
+        assert ((body["excludeKeys"] is False and req["include_keys"] is True) or (body["excludeKeys"] is True and req["include_keys"] is False))
+
+
+def generate_device_identity_Import_req(
+    hub_name,
+    input_blob_container_uri,
+    output_blob_container_uri,
+    storage_authentication_type=None,
+    resource_group_name=None,
+):
+    return {
+        "hub_name": hub_name,
+        "input_blob_container_uri": input_blob_container_uri,
+        "output_blob_container_uri": output_blob_container_uri,
+        "storage_authentication_type": storage_authentication_type,
+        "resource_group_name": resource_group_name,
+    }
+
+
+class TestDeviceIdentityImport:
+    @pytest.fixture(params=[200])
+    def serviceclient(self, mocker, fixture_ghcs, fixture_sas, request):
+        service_client = mocker.patch(path_service_client)
+        service_client.return_value = build_mock_response(mocker, request.param, {})
+        return service_client
+
+    @pytest.mark.parametrize(
+        "req",
+        [
+            (generate_device_identity_Import_req(hub_name="hubname1", input_blob_container_uri="inputuri1", output_blob_container_uri="outputuri1")),
+            (generate_device_identity_Import_req(hub_name="hubname3", input_blob_container_uri="inputuri2", output_blob_container_uri="outputuri2", resource_group_name="rgName")),
+        ],
+    )
+    def test_device_identity_import(self, serviceclient, req):
+        fixture_cmd.cli_ctx = DummyCli()
+        subject.iot_device_import(
+            fixture_cmd,
+            req["hub_name"],
+            req["input_blob_container_uri"],
+            req["output_blob_container_uri"],
+            req["storage_authentication_type"],
+            req["resource_group_name"]
+        )
+        import pdb
+        pdb.set_trace()
+        args = serviceclient.call_args
+        body = json.loads(args[0][0].body)
+        assert body["inputBlobContainerUri"] == req["input_blob_container_uri"]
+        assert body["outputBlobContainerUri"] == req["output_blob_container_uri"]
 
 
 def generate_device_create_req(
@@ -551,8 +648,7 @@ class TestDeviceList:
 
         if edge:
             assert (
-                body["query"]
-                == "select * from devices where capabilities.iotEdge = true"
+                body["query"] == "select * from devices where capabilities.iotEdge = true"
             )
         else:
             assert body["query"] == "select * from devices"
