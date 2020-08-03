@@ -108,6 +108,24 @@ class TestDeviceIdentityExport:
         else:
             assert body["excludeKeys"]
 
+    @pytest.mark.parametrize(
+        "req",
+        [
+            (generate_device_import_export_req()),
+            (generate_device_import_export_req(include_keys=True)),
+        ],
+    )
+    def test_device_identity_export_error(self, fixture_cmd, service_client_generic_errors, req):
+        service_client_generic_errors.assert_all_requests_are_fired = False
+        with pytest.raises(CLIError):
+            subject.iot_device_export(
+                fixture_cmd,
+                req["hub_name"],
+                req["blob_container_uri"],
+                req["include_keys"],
+                req["storage_authentication_type"]
+            )
+
 
 class TestDeviceIdentityImport:
     @pytest.fixture(params=[200])
@@ -140,6 +158,24 @@ class TestDeviceIdentityImport:
         assert args[0][0].method == "POST"
         assert body["inputBlobContainerUri"] == req["input_blob_container_uri"]
         assert body["outputBlobContainerUri"] == req["output_blob_container_uri"]
+
+    @pytest.mark.parametrize(
+        "req",
+        [
+            (generate_device_import_export_req()),
+            (generate_device_import_export_req(include_keys=True)),
+        ],
+    )
+    def test_device_identity_import_error(self, fixture_cmd, service_client_generic_errors, req):
+        service_client_generic_errors.assert_all_requests_are_fired = False
+        with pytest.raises(CLIError):
+            subject.iot_device_import(
+                fixture_cmd,
+                req["hub_name"],
+                req["input_blob_container_uri"],
+                req["output_blob_container_uri"],
+                req["storage_authentication_type"]
+            )
 
 
 def generate_device_create_req(
