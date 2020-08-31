@@ -266,8 +266,10 @@ def update_iot_device_custom(instance, edge_enabled=None, status=None, status_re
             auth = 'selfSigned'
             if not any([primary_thumbprint, secondary_thumbprint]):
                 raise CLIError("primary + secondary Thumbprint required with selfSigned auth")
-            instance['authentication']['x509Thumbprint']['primaryThumbprint'] = primary_thumbprint
-            instance['authentication']['x509Thumbprint']['secondaryThumbprint'] = secondary_thumbprint
+            if primary_thumbprint:
+                instance['authentication']['x509Thumbprint']['primaryThumbprint'] = primary_thumbprint
+            if secondary_thumbprint:
+                instance['authentication']['x509Thumbprint']['secondaryThumbprint'] = secondary_thumbprint
         elif auth_method == DeviceAuthType.x509_ca.name:
             auth = 'certificateAuthority'
         else:
