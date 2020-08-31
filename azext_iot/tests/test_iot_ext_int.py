@@ -458,6 +458,28 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
             ]
         )
 
+        self.cmd(
+            "iot hub device-identity update -d {} -n {} -g {} --status-reason {}"
+            .format(device_ids[0], LIVE_HUB, LIVE_RG, 'StatusReason'),
+            checks=[
+                self.check("deviceId", device_ids[0]),
+                self.check("statusReason", 'StatusReason'),
+            ]
+        )
+
+        self.cmd(
+            "iot hub device-identity update -d {} -n {} -g {} --ee {} --status {} --status-reason {} --auth-method {} --ptp {} --stp {}"
+            .format(device_ids[0], LIVE_HUB, LIVE_RG, False, 'enabled', 'StatusReasonUpdated', 'x509_thumbprint', PRIMARY_THUMBPRINT, SECONDARY_THUMBPRINT),
+            checks=[
+                self.check("deviceId", device_ids[0]),
+                self.check("status", "enabled"),
+                self.check("capabilities.iotEdge", False),
+                self.check("statusReason", 'StatusReasonUpdated'),
+                self.check("authentication.x509Thumbprint.primaryThumbprint", PRIMARY_THUMBPRINT),
+                self.check("authentication.x509Thumbprint.secondaryThumbprint", SECONDARY_THUMBPRINT),
+            ]
+        )
+
         self.cmd("iot hub device-identity update -d {} -n {} -g {} --auth-method {}"
                  .format(device_ids[0], LIVE_HUB, LIVE_RG, 'x509_thumbprint'),
                  expect_failure=True)

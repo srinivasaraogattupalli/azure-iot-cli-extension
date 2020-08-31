@@ -384,6 +384,8 @@ class TestDeviceUpdate:
     @pytest.mark.parametrize(
         "req",
         [
+            (generate_device_show(capabilities={"iotEdge": False})),
+            (generate_device_show(status="enabled")),
             (
                 generate_device_show(
                     authentication={

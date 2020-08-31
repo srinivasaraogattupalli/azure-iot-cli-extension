@@ -274,8 +274,9 @@ def update_iot_device_custom(instance, edge_enabled=None, status=None, status_re
             auth = 'certificateAuthority'
         else:
             raise ValueError('Authorization method {} invalid.'.format(auth_method))
-        instance['authentication']['type'] = auth    
+        instance['authentication']['type'] = auth
     return instance
+
 
 def iot_device_update(
     cmd, device_id, parameters, hub_name=None, resource_group_name=None, login=None
@@ -287,16 +288,16 @@ def iot_device_update(
     resolver = SdkResolver(target=target)
     service_sdk = resolver.get_sdk(SdkType.service_sdk)
 
-    try:        
+    try:
         auth, pk, sk = _parse_auth(parameters)
         updated_device = _assemble_device(
-            parameters['deviceId'], 
+            parameters['deviceId'],
             auth, parameters['capabilities']['iotEdge'],
             pk,
             sk,
             parameters['status'].lower(),
             parameters.get('statusReason')
-            )
+        )
         etag = parameters.get("etag", None)
         if etag:
             headers = {}
