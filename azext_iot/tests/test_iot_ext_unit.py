@@ -491,7 +491,7 @@ class TestDeviceUpdate:
                         "symmetricKey": {"primaryKey": "primarykeyUpdated", "secondaryKey": "primarykeyUpdated"},
                         "type": "selfSigned",
                         "auth_method": "x509_thumbprint",
-                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                        "x509Thumbprint": {"primaryThumbprint": "1234", "secondaryThumbprint": "3214"},
                     }
                 )
             ),
