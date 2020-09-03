@@ -279,8 +279,8 @@ def update_iot_device_custom(instance, edge_enabled=None, status=None, status_re
 
 
 def iot_device_update(
-    cmd, device_id, parameters, hub_name=None, resource_group_name=None, login=None
-):
+        cmd, device_id, parameters, hub_name=None, resource_group_name=None, login=None
+        ):
     discovery = IotHubDiscovery(cmd)
     target = discovery.get_target(
         hub_name=hub_name, resource_group_name=resource_group_name, login=login
