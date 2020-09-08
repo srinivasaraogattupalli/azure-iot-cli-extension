@@ -255,6 +255,12 @@ def update_iot_device_custom(instance, edge_enabled=None, status=None, status_re
         instance['status'] = status
     if status_reason is not None:
         instance['statusReason'] = status_reason
+    if auth_method is None and (primary_thumbprint or secondary_thumbprint or primary_key or secondary_key):
+        if instance['authentication']['type'] == 'sas':
+            auth_method = DeviceAuthType.shared_private_key.name
+        elif instance['authentication']['type'] == 'selfSigned':
+            auth_method = DeviceAuthType.x509_thumbprint.name
+
     if auth_method is not None:
         if auth_method == DeviceAuthType.shared_private_key.name:
             auth = 'sas'
@@ -265,7 +271,7 @@ def update_iot_device_custom(instance, edge_enabled=None, status=None, status_re
         elif auth_method == DeviceAuthType.x509_thumbprint.name:
             auth = 'selfSigned'
             if not any([primary_thumbprint, secondary_thumbprint]):
-                raise CLIError("primary + secondary Thumbprint required with selfSigned auth")
+                raise CLIError("primary or secondary Thumbprint required with selfSigned auth")
             if primary_thumbprint:
                 instance['authentication']['x509Thumbprint']['primaryThumbprint'] = primary_thumbprint
             if secondary_thumbprint:

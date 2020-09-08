@@ -366,12 +366,36 @@ def generate_device_show(**kvp):
         "capabilities": {"iotEdge": True},
         "deviceId": device_id,
         "status": "disabled",
-        "statusReason": "status_reason",
+        "statusReason": None,
     }
     for k in kvp:
         if payload.get(k):
             payload[k] = kvp[k]
     return payload
+
+
+def generate_device_custom(
+        device=(generate_device_show()),
+        ee=None,
+        status=None,
+        status_reason=None,
+        auth=None,
+        ptp=None,
+        stp=None,
+        pk=None,
+        sk=None
+):
+    return {
+        "device": device,
+        "ee": ee,
+        "status": status,
+        "status_reason": status_reason,
+        "auth": auth,
+        "ptp": ptp,
+        "stp": stp,
+        "pk": pk,
+        "sk": sk,
+    }
 
 
 class TestDeviceUpdate:
@@ -435,194 +459,6 @@ class TestDeviceUpdate:
         assert headers["If-Match"] == '"{}"'.format(req["etag"])
 
     @pytest.mark.parametrize(
-        "req, auth, out",
-        [
-            (generate_device_show(capabilities={"iotEdge": False}), None, generate_device_show(capabilities={"iotEdge": True})),
-            (generate_device_show(status="disabled"), None, (generate_device_show(status="enabled"))),
-            (generate_device_show(), None, (generate_device_show(statusReason="StatusUpdated"))),
-            (
-                generate_device_show(
-                    authentication={
-                        "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
-                        "type": "sas",
-                    }
-                ),
-                "shared_private_key",
-                generate_device_show(
-                    authentication={
-                        "symmetricKey": {"primaryKey": "primarykeyUpdated", "secondaryKey": "primarykeyUpdated"},
-                        "type": "sas",
-                    }
-                )
-            ),
-            (
-                generate_device_show(
-                    authentication={
-                        "auth_method": "x509_thumbprint",
-                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
-                    }
-                ),
-                "x509_thumbprint",
-                generate_device_show(
-                    authentication={
-                        "auth_method": "x509_thumbprint",
-                        "x509Thumbprint": {"primaryThumbprint": "1234", "secondaryThumbprint": "3214"},
-                    }
-                )
-            ),
-            (
-                generate_device_show(
-                    authentication={
-                        "auth_method": "sas",
-                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
-                    }
-                ),
-                "x509_ca",
-                generate_device_show(
-                    authentication={
-                        "type": "certificateAuthority",
-                    }
-                )
-            ),
-        ]
-    )
-    def test_iot_device_custom(fixture_cmd, req, auth, out):
-
-        if auth is None:
-            instance = subject.update_iot_device_custom(
-                req,
-                out["capabilities"]["iotEdge"],
-                out["status"], out["statusReason"],
-                None,
-                None,
-                None,
-                None,
-                None
-            )
-        elif auth == "shared_private_key":
-            instance = subject.update_iot_device_custom(
-                req,
-                out["capabilities"]["iotEdge"],
-                out["status"], out["statusReason"],
-                auth,
-                None,
-                None,
-                out['authentication']['symmetricKey']['primaryKey'],
-                out['authentication']['symmetricKey']['secondaryKey']
-            )
-        elif auth == "x509_thumbprint":
-            instance = subject.update_iot_device_custom(
-                req,
-                out["capabilities"]["iotEdge"],
-                out["status"], out["statusReason"],
-                auth,
-                out['authentication']['x509Thumbprint']['primaryThumbprint'],
-                out['authentication']['x509Thumbprint']['secondaryThumbprint'],
-                None,
-                None
-            )
-        else:
-            instance = subject.update_iot_device_custom(
-                req,
-                out["capabilities"]["iotEdge"],
-                out["status"], out["statusReason"],
-                auth,
-                None,
-                None,
-                None,
-                None
-            )
-
-        assert instance["capabilities"]["iotEdge"] == out["capabilities"]["iotEdge"]
-        assert instance["status"] == out["status"]
-        assert instance["statusReason"] == out["statusReason"]
-
-        if auth == "shared_private_key":
-            assert instance['authentication']['symmetricKey']['primaryKey'] == out['authentication']['symmetricKey']['primaryKey']
-            assert instance['authentication']['symmetricKey']['secondaryKey'] == out['authentication']['symmetricKey']['secondaryKey']
-
-        if auth == "x509_thumbprint":
-            assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == out['authentication']['x509Thumbprint']['primaryThumbprint']
-            assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == out['authentication']['x509Thumbprint']['secondaryThumbprint']
-
-        if auth == "x509_ca":
-            assert instance['authentication']['type'] == out['authentication']['type']
-
-    @pytest.mark.parametrize(
-        "req, auth, exp",
-        [
-            (
-                generate_device_show(
-                    authentication={
-                        "symmetricKey": {"primaryKey": "123", "secondaryKey": ""},
-                        "type": "sas",
-                    }
-                ),
-                "shared_private_key",
-                CLIError
-            ),
-            (
-                generate_device_show(
-                    authentication={
-                        "type": "selfSigned",
-                        "x509Thumbprint": {"primaryThumbprint": "", "secondaryThumbprint": ""},
-                    }
-                ),
-                "x509_thumbprint",
-                CLIError
-            ),
-            (
-                generate_device_show(
-                    authentication={
-                        "type": "selfSigned",
-                        "x509Thumbprint": {"primaryThumbprint": "", "secondaryThumbprint": ""},
-                    }
-                ),
-                "x509_thumbprinttest",
-                ValueError
-            ),
-        ]
-    )
-    def test_iot_device_custom_invalid_args(self, req, auth, exp):
-        with pytest.raises(exp):
-            if auth == "shared_private_key":
-                subject.update_iot_device_custom(
-                    req,
-                    req["capabilities"]["iotEdge"],
-                    req["status"],
-                    req["statusReason"],
-                    auth,
-                    None,
-                    None,
-                    req['authentication']['symmetricKey']['primaryKey'],
-                    req['authentication']['symmetricKey']['secondaryKey']
-                )
-            elif auth == "x509_thumbprint":
-                subject.update_iot_device_custom(
-                    req,
-                    req["capabilities"]["iotEdge"],
-                    req["status"],
-                    req["statusReason"],
-                    auth,
-                    req['authentication']['x509Thumbprint']['primaryThumbprint'],
-                    req['authentication']['x509Thumbprint']['secondaryThumbprint'],
-                    None,
-                    None
-                )
-            else:
-                subject.update_iot_device_custom(
-                    req,
-                    req["capabilities"]["iotEdge"],
-                    req["status"],
-                    req["statusReason"],
-                    auth,
-                    None,
-                    None,
-                    None,
-                    None
-                )
-
-    @pytest.mark.parametrize(
         "req, exp",
         [
             (
@@ -658,6 +494,142 @@ class TestDeviceUpdate:
                 req["deviceId"],
                 hub_name=mock_target["entity"],
                 parameters=req,
+            )
+
+    @pytest.mark.parametrize(
+        "req",
+        [
+            generate_device_custom(generate_device_show(), False, "disabled"),
+            generate_device_custom(generate_device_show(), True, "enabled", "status_updated"),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
+                        "type": "sas",
+                    }
+                ), True, "enabled", None, "shared_private_key", None, None, "primary_Updated", "secondary_Updated"
+            ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "type": "x509_thumbprint",
+                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                    }
+                ), True, "enabled", None, "x509_thumbprint", "primaryThumbprint_Updated", "secondaryThumbprint_Updated", None, None
+            ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "type": "sas",
+                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                    }
+                ), True, "enabled", None, "x509_ca", "None", "None", None, None
+            ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "symmetricKey": {"primaryKey": "123", "secondaryKey": "321"},
+                        "type": "sas",
+                    }
+                ), True, "enabled", None, None, None, None, "primary_Updated", "secondary_Updated"
+            ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "type": "x509_thumbprint",
+                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                    }
+                ), True, "enabled", None, None, "primaryThumbprint_Updated", "secondaryThumbprint_Updated", None, None
+            ),
+        ]
+    )
+    def test_iot_device_custom(fixture_cmd, req):
+        instance = subject.update_iot_device_custom(
+            req["device"],
+            req["ee"],
+            req["status"],
+            req["status_reason"],
+            req["auth"],
+            req["ptp"],
+            req["stp"],
+            req["pk"],
+            req["sk"],
+        )
+        assert instance["capabilities"]["iotEdge"] == req["ee"]
+        assert instance["status"] == req["status"]
+        assert instance["statusReason"] == req["status_reason"]
+
+        if req["auth"] == "shared_private_key":
+            assert instance['authentication']['symmetricKey']['primaryKey'] == req["pk"]
+            assert instance['authentication']['symmetricKey']['secondaryKey'] == req["sk"]
+            assert instance['authentication']['type'] == 'sas'
+
+        if req["auth"] == "x509_thumbprint":
+            assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
+            assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
+            assert instance['authentication']['type'] == 'selfSigned'
+
+        if req["auth"] == "x509_ca":
+            assert instance['authentication']['type'] == "certificateAuthority"
+
+        if req["auth"] is None and (req["pk"] or req["sk"] or req["ptp"] or req["stp"]):
+            if instance['authentication']['type'] == 'sas':
+                assert instance['authentication']['symmetricKey']['primaryKey'] == req["pk"]
+                assert instance['authentication']['symmetricKey']['secondaryKey'] == req["sk"]
+            if instance['authentication']['type'] == 'selfSigned':
+                assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
+                assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
+
+    @pytest.mark.parametrize(
+        "req , exp",
+        [
+            (
+                generate_device_custom(
+                    generate_device_show(
+                        authentication={
+                            "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
+                            "type": "sas",
+                        }
+                    ), True, "enabled", None, "shared_private_key", None, None, "primary_Updated", None
+                ),
+                CLIError
+            ),
+            (
+                generate_device_custom(
+                    generate_device_show(
+                        authentication={
+                            "type": "x509_thumbprint",
+                            "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                        }
+                    ), True, "enabled", None, "x509_thumbprint", "", "", None, None
+                ),
+                CLIError
+            ),
+            (
+                generate_device_custom(
+                    generate_device_show(
+                        authentication={
+                            "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
+                            "type": "sas",
+                        }
+                    ), True, "enabled", None, "invalid_auth", None, None, "primary_Updated", None
+                ),
+                ValueError
+            ),
+        ]
+    )
+    def test_iot_device_custom_invalid_args(self, req, exp):
+        with pytest.raises(exp):
+            subject.update_iot_device_custom(
+                req["device"],
+                req["ee"],
+                req["status"],
+                req["status_reason"],
+                req["auth"],
+                req["ptp"],
+                req["stp"],
+                req["pk"],
+                req["sk"],
             )
 
 
