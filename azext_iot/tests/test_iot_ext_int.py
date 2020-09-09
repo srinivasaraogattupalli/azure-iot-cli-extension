@@ -36,6 +36,8 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 
 PRIMARY_THUMBPRINT = "A361EA6A7119A8B0B7BBFFA2EAFDAD1F9D5BED8C"
 SECONDARY_THUMBPRINT = "14963E8F3BA5B3984110B3C1CA8E8B8988599087"
+PRIMARYTHUMBPRINT_UPDATED = "B361EA6A7119A8B0B7BBFFA2EAFDAD1F9D5BED8C"
+SECONDARYTHUMBPRINT_UPDATED = "24963E8F3BA5B3984110B3C1CA8E8B8988599087"
 PRIMARY_KEY = "czLnrgU6hv0UGv5NY0rP70NHj7coYUaNKPdh97prS1o="
 SECONDARY_KEY = "czLnrgU6hv0UGv5NY0rP70NHj7coYUaNKPdh97prT1o="
 
@@ -470,8 +472,12 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
         )
 
         self.cmd(
-            "iot hub device-identity update -d {} -n {} -g {} --ee {} --status {} --status-reason {} --auth-method {} --ptp {} --stp {}"
-            .format(device_ids[0], LIVE_HUB, LIVE_RG, False, 'enabled', 'StatusReasonUpdated', 'x509_thumbprint', PRIMARY_THUMBPRINT, SECONDARY_THUMBPRINT),
+            '''iot hub device-identity update -d {} -n {} -g {} --ee {} --status {} --status-reason {}
+            --auth-method {} --ptp {} --stp {}'''
+            .format(
+                device_ids[0], LIVE_HUB, LIVE_RG, False, 'enabled', 'StatusReasonUpdated',
+                'x509_thumbprint', PRIMARY_THUMBPRINT, SECONDARY_THUMBPRINT
+            ),
             checks=[
                 self.check("deviceId", device_ids[0]),
                 self.check("status", "enabled"),
@@ -490,15 +496,14 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
                  .format(device_ids[0], LIVE_HUB, LIVE_RG, 'shared_private_key', '123'),
                  expect_failure=True)
 
-        # Swapping primary and secondary thumprint to check the update status
         self.cmd(
             "iot hub device-identity update -d {} -n {} -g {} --ptp {} --stp {}"
-            .format(device_ids[0], LIVE_HUB, LIVE_RG, SECONDARY_THUMBPRINT, PRIMARY_THUMBPRINT),
+            .format(device_ids[0], LIVE_HUB, LIVE_RG, PRIMARYTHUMBPRINT_UPDATED, SECONDARYTHUMBPRINT_UPDATED),
             checks=[
                 self.check("deviceId", device_ids[0]),
                 self.check("status", "enabled"),
-                self.check("authentication.x509Thumbprint.primaryThumbprint", SECONDARY_THUMBPRINT),
-                self.check("authentication.x509Thumbprint.secondaryThumbprint", PRIMARY_THUMBPRINT),
+                self.check("authentication.x509Thumbprint.primaryThumbprint", PRIMARYTHUMBPRINT_UPDATED),
+                self.check("authentication.x509Thumbprint.secondaryThumbprint", SECONDARYTHUMBPRINT_UPDATED),
             ],
         )
 
@@ -509,17 +514,18 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
                 self.check("deviceId", device_ids[0]),
                 self.check("status", "enabled"),
                 self.check("authentication.x509Thumbprint.primaryThumbprint", PRIMARY_THUMBPRINT),
-                self.check("authentication.x509Thumbprint.secondaryThumbprint", PRIMARY_THUMBPRINT),
+                self.check("authentication.x509Thumbprint.secondaryThumbprint", SECONDARYTHUMBPRINT_UPDATED),
             ],
         )
 
+        # Expecting failure when both primary and secondary key are not passed in sas authentication
         self.cmd("iot hub device-identity update -d {} -n {} -g {} --pk {}"
                  .format(edge_device_ids[1], LIVE_HUB, LIVE_RG, PRIMARY_KEY),
                  expect_failure=True)
 
         self.cmd(
-            '''iot hub device-identity update -d {} -n {} -g {} --primary-key {}
-                    --secondary-key {}'''.format(
+            '''iot hub device-identity update -d {} -n {} -g {} --pk {}
+                    --sk {}'''.format(
                 edge_device_ids[1], LIVE_HUB, LIVE_RG, PRIMARY_KEY, SECONDARY_KEY
             ),
             checks=[
@@ -532,8 +538,8 @@ class TestIoTHubDevices(IoTLiveScenarioTest):
 
         # With connection string
         self.cmd(
-            '''iot hub device-identity update -d {} --login {} --set authentication.symmetricKey.primaryKey={}
-                 authentication.symmetricKey.secondaryKey={}'''.format(
+            '''iot hub device-identity update -d {} --login {} --pk {}
+                --sk {}'''.format(
                 edge_device_ids[1], self.connection_string, PRIMARY_KEY, SECONDARY_KEY
             ),
             checks=[

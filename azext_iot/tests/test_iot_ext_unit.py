@@ -499,15 +499,15 @@ class TestDeviceUpdate:
     @pytest.mark.parametrize(
         "req",
         [
-            generate_device_custom(generate_device_show(), False, "disabled"),
-            generate_device_custom(generate_device_show(), True, "enabled", "status_updated"),
+            generate_device_custom(generate_device_show(), ee=False, status="disabled"),
+            generate_device_custom(generate_device_show(), ee=True, status="enabled", status_reason="status_updated"),
             generate_device_custom(
                 generate_device_show(
                     authentication={
                         "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
                         "type": "sas",
                     }
-                ), True, "enabled", None, "shared_private_key", None, None, "primary_Updated", "secondary_Updated"
+                ), auth="shared_private_key", pk="primary_Updated", sk="secondary_Updated"
             ),
             generate_device_custom(
                 generate_device_show(
@@ -515,7 +515,7 @@ class TestDeviceUpdate:
                         "type": "x509_thumbprint",
                         "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
                     }
-                ), True, "enabled", None, "x509_thumbprint", "primaryThumbprint_Updated", "secondaryThumbprint_Updated", None, None
+                ), auth="x509_thumbprint", ptp="primaryThumbprint_Updated", stp="secondaryThumbprint_Updated"
             ),
             generate_device_custom(
                 generate_device_show(
@@ -523,7 +523,7 @@ class TestDeviceUpdate:
                         "type": "sas",
                         "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
                     }
-                ), True, "enabled", None, "x509_ca", "None", "None", None, None
+                ), auth="x509_ca"
             ),
             generate_device_custom(
                 generate_device_show(
@@ -531,7 +531,7 @@ class TestDeviceUpdate:
                         "symmetricKey": {"primaryKey": "123", "secondaryKey": "321"},
                         "type": "sas",
                     }
-                ), True, "enabled", None, None, None, None, "primary_Updated", "secondary_Updated"
+                ), pk="primary_Updated", sk="secondary_Updated"
             ),
             generate_device_custom(
                 generate_device_show(
@@ -539,8 +539,24 @@ class TestDeviceUpdate:
                         "type": "x509_thumbprint",
                         "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
                     }
-                ), True, "enabled", None, None, "primaryThumbprint_Updated", "secondaryThumbprint_Updated", None, None
+                ), ptp="primaryThumbprint_Updated", stp="secondaryThumbprint_Updated"
             ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "type": "x509_thumbprint",
+                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                    }
+                ), ptp="primaryThumbprint_Updated"
+            ),
+            generate_device_custom(
+                generate_device_show(
+                    authentication={
+                        "type": "x509_thumbprint",
+                        "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
+                    }
+                ), stp="secondaryThumbprint_Updated"
+            )
         ]
     )
     def test_iot_device_custom(fixture_cmd, req):
@@ -555,9 +571,14 @@ class TestDeviceUpdate:
             req["pk"],
             req["sk"],
         )
-        assert instance["capabilities"]["iotEdge"] == req["ee"]
-        assert instance["status"] == req["status"]
-        assert instance["statusReason"] == req["status_reason"]
+        if req["ee"] is not None:
+            assert instance["capabilities"]["iotEdge"] == req["ee"]
+
+        if req["status"] is not None:
+            assert instance["status"] == req["status"]
+
+        if req["status_reason"] is not None:
+            assert instance["statusReason"] == req["status_reason"]
 
         if req["auth"] == "shared_private_key":
             assert instance['authentication']['symmetricKey']['primaryKey'] == req["pk"]
@@ -565,9 +586,11 @@ class TestDeviceUpdate:
             assert instance['authentication']['type'] == 'sas'
 
         if req["auth"] == "x509_thumbprint":
-            assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
-            assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
             assert instance['authentication']['type'] == 'selfSigned'
+            if req["ptp"]:
+                assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
+            if req["stp"]:
+                assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
 
         if req["auth"] == "x509_ca":
             assert instance['authentication']['type'] == "certificateAuthority"
@@ -577,8 +600,10 @@ class TestDeviceUpdate:
                 assert instance['authentication']['symmetricKey']['primaryKey'] == req["pk"]
                 assert instance['authentication']['symmetricKey']['secondaryKey'] == req["sk"]
             if instance['authentication']['type'] == 'selfSigned':
-                assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
-                assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
+                if req["ptp"]:
+                    assert instance['authentication']['x509Thumbprint']['primaryThumbprint'] == req["ptp"]
+                if req["stp"]:
+                    assert instance['authentication']['x509Thumbprint']['secondaryThumbprint'] == req["stp"]
 
     @pytest.mark.parametrize(
         "req , exp",
@@ -590,7 +615,7 @@ class TestDeviceUpdate:
                             "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
                             "type": "sas",
                         }
-                    ), True, "enabled", None, "shared_private_key", None, None, "primary_Updated", None
+                    ), auth="shared_private_key", pk="primarykey_Updated"
                 ),
                 CLIError
             ),
@@ -601,7 +626,7 @@ class TestDeviceUpdate:
                             "type": "x509_thumbprint",
                             "x509Thumbprint": {"primaryThumbprint": "123", "secondaryThumbprint": "321"},
                         }
-                    ), True, "enabled", None, "x509_thumbprint", "", "", None, None
+                    ), auth="x509_thumbprint", ptp="", stp=""
                 ),
                 CLIError
             ),
@@ -612,7 +637,7 @@ class TestDeviceUpdate:
                             "symmetricKey": {"primaryKey": "", "secondaryKey": ""},
                             "type": "sas",
                         }
-                    ), True, "enabled", None, "invalid_auth", None, None, "primary_Updated", None
+                    ), auth="invalid_auth", pk="primarykey_Updated"
                 ),
                 ValueError
             ),
